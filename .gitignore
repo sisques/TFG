@@ -1,0 +1,21 @@
+# VScode files
+.vscode/
+
+# Cache files
+*.pyc
+
+# External
+external/*
+
+# Weights
+weights/*
+
+# Cpp executables
+src/cpp/opticalFlow
+src/cpp/CMakeFiles
+src/cpp/CMakeCache.txt
+src/cpp/cmake_install.cmake
+src/cpp/Makefile
+
+# Images
+*.png
