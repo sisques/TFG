@@ -31,5 +31,5 @@ Detección:
 
 1. Ejecutar el fichero `detect.py`, especificando 2 imagenes de entrada y una ruta de salida de la siguiente manera:
 
-`python detect.py --inputImage1=PATH/TO/IMAGE --inputImage2=PATH/TO/IMAGE --outputPath=OUTPUT/PATH'
+`python detect.py --inputImage1=PATH/TO/IMAGE/1 --inputImage2=PATH/TO/IMAGE/2 --outputPath=OUTPUT/PATH`
 
