@@ -46,9 +46,20 @@ def plotLoss(history,name):
     plt.legend(['train', 'val'], loc='upper left')
     plt.savefig("../plots/"+name+"_loss.png")
 
+import pandas as pd
+def saveHistory(history, name): 
+    path = "../history/" + name + '.csv'
+    dictionary = history.history
+    tam = len( dictionary['loss'] )
+    while len(dictionary['val_loss']) != tam:
+      dictionary['val_loss'].append(0)
+      dictionary['val_binary_accuracy'].append(0)
+    pd.DataFrame.from_dict(history.history).to_csv(path,index=False)
+
+
 def getModel(regularized = False):
     if regularized:
-      inputA = tf.keras.Input(shape=(101,W_H,W_H,1))
+      inputA = tf.keras.Input(shape=(101,W_H,W_H,1), name="Input")
       #CNN
 
       x = tf.keras.layers.Conv3D(
@@ -59,10 +70,11 @@ def getModel(regularized = False):
               padding = 'same',
               data_format = 'channels_last',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="InputRes/2_32F"
           )(inputA)
-      x = tf.keras.layers.BatchNormalization()(x)
-      x = tf.keras.layers.Activation('relu')(x)
+      x = tf.keras.layers.BatchNormalization( name="BN_1")(x)
+      x = tf.keras.layers.Activation('relu', name="Relu_1")(x)
       x = tf.keras.layers.Conv3D(
               filters = 64,
               kernel_size = (1,3,3),
@@ -71,7 +83,8 @@ def getModel(regularized = False):
               padding = 'same',
               data_format = 'channels_last',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="InputRes/3_64F"
           )(x)
       x = tf.keras.layers.Conv3D(
               filters = 128,
@@ -81,10 +94,11 @@ def getModel(regularized = False):
               padding = 'same',
               data_format = 'channels_last',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="InputRes/4_128F"
           )(x)
-      x = tf.keras.layers.BatchNormalization()(x)
-      x = tf.keras.layers.Activation('relu')(x)
+      x = tf.keras.layers.BatchNormalization( name="BN_2")(x)
+      x = tf.keras.layers.Activation('relu', name="Relu_2")(x)
       x = tf.keras.layers.Conv3D(
               filters = 64,
               kernel_size = (1,3,3),
@@ -93,10 +107,11 @@ def getModel(regularized = False):
               padding = 'same',
               data_format = 'channels_last',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="InputRes/2_64F"
           )(x)
-      x = tf.keras.layers.BatchNormalization()(x)
-      x = tf.keras.layers.Activation('relu')(x)
+      x = tf.keras.layers.BatchNormalization( name="BN_3")(x)
+      x = tf.keras.layers.Activation('relu', name="Relu_3")(x)
       x = tf.keras.layers.Conv3D(
               filters = 32,
               kernel_size = (1,3,3),
@@ -105,25 +120,40 @@ def getModel(regularized = False):
               padding = 'same',
               data_format = 'channels_last',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="InputRes/1_32F"
           )(x)
-      x = tf.keras.layers.BatchNormalization()(x)
-      x = tf.keras.layers.Activation('relu')(x)
-      x = tf.keras.layers.Dropout(0.2)(x)
-      x = tf.keras.layers.Flatten()(x)
+      x = tf.keras.layers.BatchNormalization( name="BN_4")(x)
+      x = tf.keras.layers.Activation('relu', name="Relu_4")(x)
+      x = tf.keras.layers.Dropout(0.2, name="DropOut_1")(x)
+      x = tf.keras.layers.Flatten(name = "Flatten")(x)
       x = tf.keras.layers.Dense(
               512,
               activation='relu',
               use_bias=True,
-              kernel_regularizer=tf.keras.regularizers.l2(l=0.01)
+              kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+              name="Dense_Relu"
           )(x)
-      x = tf.keras.layers.Dropout(0.2)(x)
+      x = tf.keras.layers.Dropout(0.2, name="DropOut_2")(x)
       x = tf.keras.layers.Dense(
               100,
               activation='sigmoid',
-              use_bias=True
+              use_bias=True,
+              name="Dense_Sigmoid"
           )(x)
       x = tf.keras.Model(inputs = inputA, outputs = x)
+
+      
+      tf.keras.utils.plot_model(
+          x,
+          to_file="model2.png",
+          show_shapes=True,
+          show_layer_names=True,
+          rankdir="LR",
+          expand_nested=False,
+          dpi=96,
+      )
+
 
       return x
     else:
@@ -173,9 +203,13 @@ def getModel(regularized = False):
         return x
 
 
-def train(train, test, val, batch_size = 2, epochs = 10, lr = 0.005, modelName="model", regularized=False):
 
 
+def train(train, test, val, batch_size = 2, epochs = 10, lr = 0.005, modelName="model", regularized=False, freq = None):
+
+
+  if freq == None:
+    freq = 1
 
   with tf.device('/device:GPU:0'):
     train_size = tf.data.experimental.cardinality(train).numpy()    
@@ -199,7 +233,6 @@ def train(train, test, val, batch_size = 2, epochs = 10, lr = 0.005, modelName="
     val = val.batch(batch_size)
     val = val.repeat(epochs)
     val = val.shuffle(batch_size)
-    val = val.cache()
     val = val.prefetch(batch_size)
 
     test = test.batch(batch_size)
@@ -220,22 +253,20 @@ def train(train, test, val, batch_size = 2, epochs = 10, lr = 0.005, modelName="
         monitor='val_binary_accuracy', mode='max', patience=5
     )    
 
-    callbacks = [ es_callback ]
-    
     history = model.fit(  train,
                 batch_size = batch_size,
                 steps_per_epoch = train_size // batch_size,
                 validation_data = val,
                 validation_batch_size = batch_size,
                 validation_steps = val_size // batch_size,
-                validation_freq = 5,
+                validation_freq = freq,
                 epochs = epochs,
-                #callbacks = callbacks,
                 verbose = 1
             )
-    
-    plotAcc(history, modelName)
-    plotLoss(history, modelName)
+    saveHistory(history, modelName)
+    if(not regularized):
+      saveAcc(history, modelName)
+      saveLoss(history, modelName)
 
     print("saving model")
 
@@ -246,7 +277,6 @@ def train(train, test, val, batch_size = 2, epochs = 10, lr = 0.005, modelName="
     print("Evaluating the trained model")
     loss, acc = model.evaluate(test, verbose=1, steps = test_size // batch_size)
     print("Trained model, accurac: {:5.2f}%".format(100*acc))
-
 
 
 def loadDataset(path="../dataset/dataset", parts=5, limit = None):
@@ -289,20 +319,55 @@ def loadDataset(path="../dataset/dataset", parts=5, limit = None):
     
     return train_ds, val_ds, test_ds
 
-if __name__ == '__main__':
+small_train_ds, small_val_ds, small_test_ds = loadDataset("../dataset_23/fullDS/dataset",10,100)
+medium_train_ds, medium_val_ds, medium_test_ds = loadDataset("../dataset_23/fullDS/dataset",50,100)
 
-	train_ds, val_ds, test_ds = loadDataset("../dataset_23/fullDS/dataset",10,100)
+"""
+
+print("Training unregularized models")
+train(
+  small_train_ds,
+  small_test_ds,
+  small_val_ds, 
+  batch_size = 8,
+  epochs = 5,
+  lr = 5e-4,
+  modelName="orig_small_v2",
+  regularized = False)
+
+train(
+  medium_train_ds,
+  medium_test_ds,
+  medium_val_ds, 
+  batch_size = 8,
+  epochs = 5,
+  lr = 5e-4,
+  modelName="orig_medium_v2",
+  regularized = False)
 
 
 
-    
-    train(
-        train_ds,
-        test_ds,
-        val_ds, 
-        batch_size = 2,
-        epochs = 100,
-        lr = 5e-4,
-        modelName="m1000")
+print("Training regularized models")
+train(
+  small_train_ds,
+  small_test_ds,
+  small_val_ds, 
+  batch_size = 10,
+  epochs = 50,
+  lr = 5e-5,
+  modelName="reg_small_50_5e-5",
+  regularized = True,
+  freq =  10)
 
+"""
+train(
+  medium_train_ds,
+  medium_test_ds,
+  medium_val_ds, 
+  batch_size = 10,
+  epochs = 50,
+  lr = 5e-5,
+  modelName="reg_medium_50_5e-5",
+  regularized = True,
+  freq = 10)
     
